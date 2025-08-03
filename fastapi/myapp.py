@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,Query
 from pydantic import BaseModel, validator, Field
 import pandas as pd
 
@@ -26,11 +26,7 @@ for col in ['东累计变形量(mm)', '北累计变形量(mm)', '高程累计变
                 .mean()
                 .reset_index(level=0, drop=True))
     
-class PointQuery(BaseModel):
-    x: float = Field(..., description="东坐标")
-    y: float = Field(..., description="北坐标")
-    z: float = Field(..., description="高程")
-    cate: str = Field(..., description="cate")
+
 
 @app.get("/tunnel/point")
 async def get_points():
@@ -41,16 +37,20 @@ async def get_points():
     return {"err": 0, "data": output["data"]}
 
 
-@app.post("/pic/point")
-async def get_pic_points(query: PointQuery):
+@app.get("/pic/point")
+async def get_pic_points(
+    x: float = Query(..., description="东坐标"),
+    y: float = Query(..., description="北坐标"),
+    z: float = Query(..., description="高程"),
+    cate: str = Query(..., description="cate")
+):
     '''
     输入
-    curl -X POST http://localhost:8000/pic/point \     
--H "Content-Type: application/json" \     
--d '{"x":-2.02669720220227, "y":-16.5932312026474, "z": 0.393704432538329,"cate": "jc5"}'
+    GET 示例：
+    curl "http://localhost:8000/pic/point?x=-2.02669720220227&y=-16.5932312026474&z=0.393704432538329&cate=jc5"
     '''
     mask1 = (
-        (df_index.测点编号2 == query.cate)
+        (df_index.测点编号2 == cate)
     )
     
     # if not any(mask1.tolist()):
@@ -59,9 +59,9 @@ async def get_pic_points(query: PointQuery):
     df_target = df_index.loc[mask1].copy()
     df_target['diff'] = (
             df_target[['东坐标', '北坐标', '高程']]
-            .apply(lambda row: (row['东坐标'] - query.x) +
-                              (row['北坐标'] - query.y) +
-                              (row['高程'] - query.z), axis=1)
+            .apply(lambda row: (row['东坐标'] - x) +
+                              (row['北坐标'] - y) +
+                              (row['高程'] - z), axis=1)
     )
 
 
@@ -82,8 +82,6 @@ async def get_pic_points(query: PointQuery):
          "y": list(zip(output["index"], output["北累计变形量(mm)_mean"])),
          "z": list(zip(output["index"], output["高程累计变形量(mm)_mean"])),
         }
-
-
     
 
 # 本地调试
