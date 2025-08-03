@@ -2,8 +2,17 @@ from typing import List
 from fastapi import FastAPI, HTTPException,Query
 from pydantic import BaseModel, validator, Field
 import pandas as pd
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Async Points API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # 或指定前端域名
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # 全局 DataFrame
 df = pd.read_excel('深圳地铁轨道数据.xlsx')
@@ -87,4 +96,4 @@ async def get_pic_points(
 # 本地调试
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("myapp:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("myapp:app", host="0.0.0.0", port=8800, reload=True)
