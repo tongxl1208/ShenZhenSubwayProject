@@ -42,7 +42,7 @@ async def get_pic_points(
     x: float = Query(..., description="东坐标"),
     y: float = Query(..., description="北坐标"),
     z: float = Query(..., description="高程"),
-    cate: str = Query(..., description="cate")
+    cat: str = Query(..., description="cat")
 ):
     '''
     输入
@@ -50,7 +50,7 @@ async def get_pic_points(
     curl "http://localhost:8000/pic/point?x=-2.02669720220227&y=-16.5932312026474&z=0.393704432538329&cate=jc5"
     '''
     mask1 = (
-        (df_index.测点编号2 == cate)
+        (df_index.测点编号2 == cat)
     )
     
     # if not any(mask1.tolist()):
