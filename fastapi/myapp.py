@@ -1,8 +1,11 @@
-from typing import List
-from fastapi import FastAPI, HTTPException,Query
-from pydantic import BaseModel, validator, Field
 import pandas as pd
+from typing import List
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, validator, Field
+
 
 app = FastAPI(title="Async Points API")
 app.add_middleware(
@@ -13,7 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 # 全局 DataFrame
 df = pd.read_excel('深圳地铁轨道数据.xlsx')
 df['测点编号2'] = df['测点编号'].str.split('-').str[0]
@@ -37,6 +40,10 @@ for col in ['东累计变形量(mm)', '北累计变形量(mm)', '高程累计变
     
 
 
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/static/index.html")
+
 @app.get("/tunnel/point")
 async def get_points():
     output = (
@@ -56,14 +63,14 @@ async def get_pic_points(
     '''
     输入
     GET 示例：
-    curl "http://localhost:8000/pic/point?x=-2.02669720220227&y=-16.5932312026474&z=0.393704432538329&cate=jc5"
+    curl "http://localhost:8000/pic/point?x=-2.02669720220227&y=-16.5932312026474&z=0.393704432538329&cat=jc5"
     '''
     mask1 = (
         (df_index.测点编号2 == cat)
     )
     
     # if not any(mask1.tolist()):
-    #     raise HTTPException(status_code=404, detail="找不到对应测点cate")
+    #     raise HTTPException(status_code=404, detail="找不到对应测点cat")
     
     df_target = df_index.loc[mask1].copy()
     df_target['diff'] = (
@@ -96,4 +103,4 @@ async def get_pic_points(
 # 本地调试
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("myapp:app", host="0.0.0.0", port=8800, reload=True)
+    uvicorn.run("myapp:app", host="0.0.0.0", port=8000, reload=True)
