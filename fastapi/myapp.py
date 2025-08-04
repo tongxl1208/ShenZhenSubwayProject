@@ -29,7 +29,7 @@ df_index = df.iloc[:55, :]
 df = (df.sort_values(by = ['测点编号', '采集时间'], ascending = [True, True])
         .reset_index(drop = True))
 
-window = 5
+window = 1
 for col in ['东累计变形量(mm)', '北累计变形量(mm)', '高程累计变形量(mm)']:
     df[f'{col}_mean'] = (
                 df
@@ -103,4 +103,4 @@ async def get_pic_points(
 # 本地调试
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("myapp:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("myapp:app", host="0.0.0.0", port=8800, reload=True)
