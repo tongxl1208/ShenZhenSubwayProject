@@ -236,6 +236,7 @@ def caculate_predict(df, col_dict, intervals, taglist):
     resultdict = {}
     
     axis_df = df[(df['测量周期'] == '第3期') ]
+    bigdate = axis_df['采集时间'].max()
     forecast_list = []
     for name ,axis in col_dict.items():
         for tag in  taglist:
@@ -248,6 +249,7 @@ def caculate_predict(df, col_dict, intervals, taglist):
             model.add_seasonality(name='day', period=2, fourier_order=4) 
             model = model.fit(axis_df_input)
             future = model.make_future_dataframe(periods=24, freq='4H')
+            future = future[future['ds'] > bigdate]
             future['cap'] = axis_df_input['y'].max()
             future['floor'] = axis_df_input['y'].min()
             future['work_hours'] = ((future['ds'].dt.hour >= 9) & (future['ds'].dt.hour <= 18)).astype(int)
