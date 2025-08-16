@@ -22,7 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="static", html=True))
+app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 # 全局 DataFrame
 
 df: pd.DataFrame = pd.DataFrame()
@@ -39,7 +40,7 @@ save_dict : dict = {}
 class Payload(BaseModel):
     payload: List[Any]
 
-@app.post("/upload")
+@app.post("/api/upload")
 async def upload_points(payload: Payload):
     """
     请求体示例：
@@ -139,7 +140,7 @@ def get_point_id(x, y, z , cat):
 async def root():
     return RedirectResponse(url="/static/index.html")
 
-@app.get("/tunnel/point")
+@app.get("/api/tunnel/point")
 async def get_points():
     global df_index
     output = (
@@ -150,7 +151,7 @@ async def get_points():
 
 
 
-@app.get("/all_point")
+@app.get("/api/all_point")
 async def get_pic_points(
     x: float = Query(..., description="东坐标"),
     y: float = Query(..., description="北坐标"),
@@ -178,7 +179,7 @@ async def get_pic_points(
     
 
 
-@app.get("/yichang")
+@app.get("/api/yichang")
 async def get_yichang():
     global save_dict
 
@@ -187,14 +188,14 @@ async def get_yichang():
 
 
     
-@app.get("/zhengtai")
+@app.get("/api/zhengtai")
 async def get_zhengtai():
     global df
     if '正态' in save_dict.keys():
         return save_dict['正态']
 
 
-@app.get("/fangchaqx")
+@app.get("/api/fangchaqx")
 async def get_fangchaqx():
     global save_dict
     
@@ -203,7 +204,7 @@ async def get_fangchaqx():
 
 
     
-@app.get("/fangchafx")
+@app.get("/api/fangchafx")
 async def get_fangchafx():
     global save_dict
 
@@ -213,7 +214,7 @@ async def get_fangchafx():
         
     
 
-@app.get("/budengfangchafx")
+@app.get("/api/budengfangchafx")
 async def get_budengfangchafx():
     global save_dict
 
@@ -222,14 +223,14 @@ async def get_budengfangchafx():
         return save_dict['不等方差分析']
 
 
-@app.get("/Kruskal")
+@app.get("/api/Kruskal")
 async def get_Kruskal():
     global save_dict
 
     if '非正态中值分析' in save_dict.keys():
         return save_dict['非正态中值分析']
     
-@app.get("/predict")
+@app.get("/api/predict")
 async def get_predict():
 
     global save_dict
