@@ -202,30 +202,30 @@ def caculate_Kruskal(df, shapiro_dict,col_dict, intervals, taglist):
     shapiro_df = pd.DataFrame(shapiro_dict['data'])
     for name ,col in col_dict.items():
         for point in taglist:
-            for interval in intervals:
+            # for interval in intervals:
         # 假设周期列是字符串，如“第1期”“第2期”……
-                if shapiro_df[(shapiro_df['测点编号'] == point)&(shapiro_df['测量周期'] == interval) & (shapiro_df['Shapiro-Wilk'] == '不服从正态')].empty:
-                        continue
+            if shapiro_df[(shapiro_df['测点编号'] == point)&(shapiro_df['单次变形坐标'] == name) & (shapiro_df['Shapiro-Wilk'] == '不服从正态')].empty:
+                    continue
+
+            groups = {
+                period: df.loc[(df['测点编号'] == point) & (df['测量周期'] == period)& (df[col].abs()<1), col]
+                        .to_numpy()
+                for period in intervals
+            }
+
+            alpha = 0.05
+            stat, p = kruskal(*groups.values())
+            if p > alpha:
+                Kruskal['Kruskal-Wallis'].append('中位数一致')
+        #             print(f"{i} 不能拒绝原假设：数据服从正态分布 (p > 0.05)")
+            else:
+                Kruskal['Kruskal-Wallis'].append('中位数不一致')
+        #             print(f"{i} 拒绝原假设：             数据不服从正态分布 (p ≤ 0.05)")
+            Kruskal['测点编号'].append(point)
+            Kruskal['测量周期'].append(intervals.tolist())
+            Kruskal['单次变形坐标'].append(name)
+            Kruskal['p值'].append(p)
     
-                groups = {
-                    period: df.loc[(df['测点编号'] == point) & (df['测量周期'] == period)& (df[col].abs()<1), col]
-                            .to_numpy()
-                    for period in intervals
-                }
-    
-                alpha = 0.05
-                stat, p = kruskal(*groups.values())
-                if p > alpha:
-                    Kruskal['Kruskal-Wallis'].append('中位数一致')
-            #             print(f"{i} 不能拒绝原假设：数据服从正态分布 (p > 0.05)")
-                else:
-                    Kruskal['Kruskal-Wallis'].append('中位数不一致')
-            #             print(f"{i} 拒绝原假设：             数据不服从正态分布 (p ≤ 0.05)")
-                Kruskal['测点编号'].append(point)
-                Kruskal['测量周期'].append(intervals.tolist())
-                Kruskal['单次变形坐标'].append(name)
-                Kruskal['p值'].append(p)
-                break
     
     resultdict['data'] = Kruskal
     resultdict['err'] = 0
@@ -243,19 +243,21 @@ def caculate_predict(df, col_dict, intervals, taglist):
             axis_df_input['cap'] = axis_df_input['y'].max()
             axis_df_input['floor'] = axis_df_input['y'].min() 
             axis_df_input['work_hours'] = ((axis_df_input['ds'].dt.hour >= 9) & (axis_df_input['ds'].dt.hour <= 18)).astype(int)
-            train, test = axis_df_input[:42], axis_df_input[42:]
-            # 预测模型
             model = Prophet(growth='logistic', changepoint_prior_scale=0.5,daily_seasonality=False)
             model.add_regressor('work_hours')
             model.add_seasonality(name='day', period=2, fourier_order=4) 
-            model = model.fit(train)
-            forecast = model.predict(test)
-            forecast['y'] = test['y'].tolist()
+            model = model.fit(axis_df_input)
+            future = model.make_future_dataframe(periods=24, freq='4H')
+            future['cap'] = axis_df_input['y'].max()
+            future['floor'] = axis_df_input['y'].min()
+            future['work_hours'] = ((future['ds'].dt.hour >= 9) & (future['ds'].dt.hour <= 18)).astype(int)
+            forecast = model.predict(future)
             forecast['单次变形坐标'] = name
             forecast['测点编号'] = tag
             forecast_list.append(forecast[['测点编号' ,'单次变形坐标','ds',  'yhat']])
     result = pd.concat(forecast_list, axis=0, ignore_index = True)
     result = result.rename(columns = {'ds': '预测日期', 'yhat': '预测变形量(mm)'})
+    # print(result['预测日期'])
     result = result.to_dict('list')
     resultdict['data'] = result
     resultdict['err'] = 0
