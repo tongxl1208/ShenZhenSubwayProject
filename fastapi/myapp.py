@@ -27,6 +27,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 df: pd.DataFrame = pd.DataFrame()
 df_index: pd.DataFrame = pd.DataFrame()
+df_predict: pd.DataFrame = pd.DataFrame()
 col_dict = {'东' :'东单次变形量(mm)', '北': '北单次变形量(mm)',  '高程':'高程单次变形量(mm)'}
 yichang_dict = {}
 
@@ -52,6 +53,7 @@ async def upload_points(payload: Payload):
     global df_index
     global taglist
     global save_dict
+    global df_predict
     try:
         # 直接利用字典构造 DataFrame
         data = payload.dict()
@@ -64,23 +66,24 @@ async def upload_points(payload: Payload):
 
     # 覆盖全局变量
     # GLOBAL_DF = df.copy()
-    df.columns = ['测点编号', '东坐标', '东单次变形量(mm)', '东累计变形量(mm)', '北坐标', '北单次变形量(mm)',
-       '北累计变形量(mm)', '高程', '高程单次变形量(mm)', '高程累计变形量(mm)', '水平角(°)', '竖直角(°)',
-       '斜距(m)', '采集时间', '备注', '测量周期']
+    df = df.rename(columns = {'index' :'测点编号', 'east_coordinate' :'东坐标', 'east_shift':'东单次变形量(mm)',
+                              'east_shift_acc':'东累计变形量(mm)', 'north_corrdinate':'北坐标', 'north_shift':'北单次变形量(mm)',
+       'north_shift_acc':'北累计变形量(mm)', 'height_coordinate' :'高程',  'height_shift':'高程单次变形量(mm)', 'height_shift_acc':'高程累计变形量(mm)', 'd1' :'水平角(°)', 'd2':'竖直角(°)',
+       'd3':'斜距(m)', 'record_time':'采集时间', 'remark':'备注', 'interval' :'测量周期'})
 
 # {'测点编号': [], ''}
 
     df['测点编号2'] = df['测点编号'].str.split('-').str[0]
     df = df[~df['测点编号2'].isin(['kz1', 'kz2', 'kz3', 'kz4'])]
     df['采集时间'] = pd.to_datetime(df['采集时间'])
-    df_use = df[df['测量周期'] == '第3期'].copy()
+    df_predict = df[df['测量周期'] == '第3期'].copy()
     
     # 提前缓存前 55 行（只读一次，减少每次请求的重复切片）
     df_index = df.iloc[:55, :]
     taglist = df_index['测点编号'].tolist()
     intervals = df['测量周期'].unique()
     # 计算异常值，只计算第3期，用于预测
-    df_yichang ,df_use = caculate_yichang(df_use, col_dict, ['第3期'], taglist, shesd)
+    df_yichang ,df_predict = caculate_yichang(df_predict, col_dict, ['第3期'], taglist, shesd)
     # 计算正态性
     shapiro_dict = caculate_zhengtai(df, col_dict, intervals, taglist)
     # 计算方差齐性
@@ -91,8 +94,7 @@ async def upload_points(payload: Payload):
     pg_dict = caculate_budengfangchafx(df, fangcha_dict,col_dict, intervals, taglist)
     # Kruskal
     kruskal_dict = caculate_Kruskal(df, shapiro_dict ,col_dict, intervals, taglist)
-    # 预测
-    predict_dict = caculate_predict(df_use, col_dict, intervals, taglist)
+
 
     save_dict['异常值'] = df_yichang
     save_dict['正态'] = shapiro_dict
@@ -100,7 +102,8 @@ async def upload_points(payload: Payload):
     save_dict['方差分析'] = f_oneway_dict
     save_dict['不等方差分析'] = pg_dict
     save_dict['非正态中值分析'] = kruskal_dict
-    save_dict['预测值'] = predict_dict
+    save_dict['new'] = 1
+    # save_dict['预测值'] = predict_dict
 
     return {
         "msg": "上传成功，已写入全局变量 df",
@@ -111,6 +114,9 @@ async def upload_points(payload: Payload):
 
 
 def get_point_id(x, y, z , cat):
+    global df_index
+
+    
     mask1 = (
         (df_index.测点编号2 == cat)
     )
@@ -135,6 +141,7 @@ async def root():
 
 @app.get("/tunnel/point")
 async def get_points():
+    global df_index
     output = (
         df_index[['东坐标', '北坐标', '高程', '测点编号2']]
         .to_dict(orient="split")
@@ -153,8 +160,8 @@ async def get_pic_points(
     '''
     输入
     GET 示例：
-    curl "http://localhost:8800/all_point?x=-2.02669720220227&y=-16.5932312026474&z=0.393704432538329&cat=jc5"
-    http://8.136.1.153:8800/all_point?x=-2.02669720220227&y=-16.5932312026474&z=0.393704432538329&cat=jc5
+    curl "http://localhost:8000/all_point?x=-2.02669720220227&y=-16.5932312026474&z=0.393704432538329&cat=jc5"
+    http://8.136.1.153:8000/all_point?x=-2.02669720220227&y=-16.5932312026474&z=0.393704432538329&cat=jc5
     '''
     PointNo = get_point_id(x, y, z , cat)
     df_point = df[df.测点编号 == PointNo].copy().reset_index(drop=True).reset_index()
@@ -226,10 +233,17 @@ async def get_Kruskal():
 async def get_predict():
 
     global save_dict
-
-
-    if '预测值' in save_dict.keys():
+    global df_predict
+    global intervals
+    global taglist
+    
+    if ('预测值' in save_dict.keys()) and (save_dict['new'] == 0):
         return save_dict['预测值']
+        # 预测
+    predict_dict = caculate_predict(df_predict, col_dict, intervals, taglist)
+    save_dict['预测值'] = predict_dict
+    save_dict['new'] = 0
+    return predict_dict
 
     
 
