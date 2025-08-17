@@ -76,7 +76,7 @@ async def upload_points(payload: Payload):
 
     df['测点编号2'] = df['测点编号'].str.split('-').str[0]
     df = df[~df['测点编号2'].isin(['kz1', 'kz2', 'kz3', 'kz4'])]
-    df['采集时间'] = pd.to_datetime(df['采集时间'], unit='ms').dt.strftime('%Y-%m-%d %H:%M:%S')
+    df['采集时间'] = pd.to_datetime(df['采集时间'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai').dt.strftime('%Y-%m-%d %H:%M:%S')
     df['采集时间'] = pd.to_datetime(df['采集时间'])
     df_predict = df[df['测量周期'] == '第3期'].copy()
     
