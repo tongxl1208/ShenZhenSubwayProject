@@ -81,7 +81,7 @@ async def upload_points(payload: Payload):
     
     
     # 提前缓存前 55 行（只读一次，减少每次请求的重复切片）
-    df_index = df.iloc[:55, :]
+    df_index = df.iloc[df['测点编号'].drop_duplicates(keep='first').index]
     taglist = df_index['测点编号'].tolist()
     intervals = df['测量周期'].unique()
     last_interval = sorted(intervals)[-1]
@@ -90,7 +90,7 @@ async def upload_points(payload: Payload):
     print(intervals)
     print(df.shape)
     
-    # 计算异常值，只计算第3期，用于预测
+    # 计算异常值，只计算最后一期，用于预测
     df_yichang ,df_predict = caculate_yichang(df_predict, last_interval, col_dict, taglist, shesd)
     # 计算正态性
     shapiro_dict = caculate_zhengtai(df, col_dict, intervals, taglist)
