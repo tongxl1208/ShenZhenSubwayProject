@@ -12,27 +12,26 @@ from scipy import stats
 from scipy.stats import f_oneway, levene, bartlett, kruskal, shapiro, t
 
 
-def caculate_yichang(df, col_dict, intervals, taglist, shesd):    
+def caculate_yichang(df, last_interval,col_dict,taglist, shesd):    
     df_yichang = {'测量周期': [], '单次变形坐标': [], '检测点': [], 'P值':[], '异常值数量': []}
     resultdict = {}
     axis_dfs = []
     alpha = 0.025
     for name ,col in col_dict.items():
         count = 0
-        for interval in intervals:
-            for tag in taglist:
-                R = df[(df['测点编号'] == tag) & (df['测量周期'] == interval)][col].to_numpy()
-                mean_val = np.mean(R)
-                res = shesd(R, period=None, max_anoms=None, alpha=alpha)
-                R[res["anomaly_indices"]] = mean_val
-                mask = (df['测点编号'] == tag) & (df['测量周期'] == interval)
-                df.loc[mask, col] = R
-                count += len(res["anomaly_indices"])                
-                df_yichang['测量周期'].append(interval)
-                df_yichang['单次变形坐标'].append(name)
-                df_yichang['检测点'].append(tag)
-                df_yichang['P值'].append(alpha)
-                df_yichang['异常值数量'].append(len(res["anomaly_indices"]))
+        for tag in taglist:
+            R = df[(df['测点编号'] == tag)][col].to_numpy()
+            mean_val = np.mean(R)
+            res = shesd(R, period=None, max_anoms=None, alpha=alpha)
+            R[res["anomaly_indices"]] = mean_val
+            mask = (df['测点编号'] == tag)
+            df.loc[mask, col] = R
+            count += len(res["anomaly_indices"])                
+            df_yichang['测量周期'].append(last_interval)
+            df_yichang['单次变形坐标'].append(name)
+            df_yichang['检测点'].append(tag)
+            df_yichang['P值'].append(alpha)
+            df_yichang['异常值数量'].append(len(res["anomaly_indices"]))
     resultdict['data'] = df_yichang
     resultdict['err'] = 0
 
@@ -234,8 +233,9 @@ def caculate_Kruskal(df, shapiro_dict,col_dict, intervals, taglist):
 
 def caculate_predict(df, col_dict, intervals, taglist):
     resultdict = {}
+    interval = sorted(intervals)[-1]
     
-    axis_df = df[(df['测量周期'] == '第3期') ]
+    axis_df = df[(df['测量周期'] == interval) ]
     bigdate = axis_df['采集时间'].max()
     forecast_list = []
     for name ,axis in col_dict.items():
@@ -263,7 +263,7 @@ def caculate_predict(df, col_dict, intervals, taglist):
     result = result.to_dict('list')
     resultdict['data'] = result
     resultdict['err'] = 0
-    # save_dict['预测值'] = resultdict
+
     return resultdict
 
     

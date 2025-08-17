@@ -78,14 +78,20 @@ async def upload_points(payload: Payload):
     df = df[~df['测点编号2'].isin(['kz1', 'kz2', 'kz3', 'kz4'])]
     df['采集时间'] = pd.to_datetime(df['采集时间'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai').dt.strftime('%Y-%m-%d %H:%M:%S')
     df['采集时间'] = pd.to_datetime(df['采集时间'])
-    df_predict = df[df['测量周期'] == '第3期'].copy()
+    
     
     # 提前缓存前 55 行（只读一次，减少每次请求的重复切片）
     df_index = df.iloc[:55, :]
     taglist = df_index['测点编号'].tolist()
     intervals = df['测量周期'].unique()
+    last_interval = sorted(intervals)[-1]
+    df_predict = df[df['测量周期'] == last_interval].copy()
+
+    print(intervals)
+    print(df.shape)
+    
     # 计算异常值，只计算第3期，用于预测
-    df_yichang ,df_predict = caculate_yichang(df_predict, col_dict, ['第3期'], taglist, shesd)
+    df_yichang ,df_predict = caculate_yichang(df_predict, last_interval, col_dict, taglist, shesd)
     # 计算正态性
     shapiro_dict = caculate_zhengtai(df, col_dict, intervals, taglist)
     # 计算方差齐性
